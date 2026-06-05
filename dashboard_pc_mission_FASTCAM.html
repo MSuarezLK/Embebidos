@@ -1,0 +1,1456 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard robot10 — fluido</title>
+  <style>
+    /* =====================================================
+       BASE  —  igual al original con mejoras tipográficas
+    ===================================================== */
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&display=swap');
+
+    :root {
+      --bg:       #e8eaed;
+      --surface:  #ffffff;
+      --border:   #d0d4db;
+      --accent:   #1a73e8;
+      --accent2:  #34a853;
+      --warn:     #ea4335;
+      --orange:   #fa7b17;
+      --text:     #202124;
+      --muted:    #5f6368;
+      --radius:   12px;
+      --shadow:   0 2px 8px rgba(0,0,0,.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--text);
+    }
+
+    /* ── HEADER ── */
+    #header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    #header h1 {
+      font-size: 1rem; font-weight: 700; margin: 0;
+      letter-spacing: .3px;
+    }
+    #header-status {
+      margin-left: auto;
+      font-size: .8rem; color: var(--muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dot-ws {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--warn);
+      transition: background .3s;
+    }
+    .dot-ws.on { background: var(--accent2); }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: .85rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── GRID ── */
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .panel {
+      background: var(--surface);
+      padding: 14px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    /* ── INPUTS ── */
+    label {
+      display: block;
+      font-size: .75rem; color: var(--muted);
+      margin: 8px 0 2px;
+    }
+    input, textarea, select {
+      width: 100%; padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .9rem; font-family: inherit;
+      background: #f8f9fa;
+      margin-bottom: 4px;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: #fff;
+    }
+    textarea { height: 80px; resize: vertical; }
+
+    /* ── BOTONES ── */
+    button {
+      display: inline-block;
+      padding: 7px 14px;
+      border: none; border-radius: 8px;
+      font-family: inherit; font-size: .85rem; font-weight: 500;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+
+    .btn-primary   { background: var(--accent);  color: #fff; }
+    .btn-success   { background: var(--accent2); color: #fff; }
+    .btn-danger    { background: var(--warn);    color: #fff; }
+    .btn-neutral   { background: #f1f3f4; color: var(--text); border: 1px solid var(--border); }
+    .btn-orange    { background: var(--orange); color: #fff; }
+    .btn-full      { width: 100%; margin: 3px 0; }
+    button:disabled { opacity: .45; cursor: default; }
+
+    /* ── LOG ── */
+    #log {
+      background: #111;
+      color: #0f0;
+      height: 200px;
+      overflow-y: auto;
+      border-radius: 8px;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+    }
+
+    /* ── TOPIC FILTER BUTTONS (original) ── */
+    .topic-btn {
+      padding: 3px 8px;
+      background: #e8eaed;
+      border-radius: 6px; border: none;
+      margin: 2px; cursor: pointer; font-size: .75rem;
+    }
+    .topic-btn.active { background: var(--accent2); color: #fff; }
+
+    /* ── CAMERA ── */
+    #cam {
+      border: 1px solid var(--border);
+      image-rendering: pixelated;
+      width: 100%; max-width: 320px;
+      height: auto; aspect-ratio: 4/3;
+      border-radius: 6px; display: block;
+    }
+
+    /* ── SUBS LIST ── */
+    #subsList {
+      list-style: none; padding: 0; margin: 6px 0 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+    }
+    #subsList li { padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+
+    /* =====================================================
+       D-PAD  (control carro)
+    ===================================================== */
+    .dpad {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 6px;
+      width: 160px;
+      margin: 8px auto;
+    }
+    .dpad button {
+      height: 46px; font-size: 1.2rem;
+      background: #f1f3f4; border: 1px solid var(--border);
+      border-radius: 10px; padding: 0;
+      touch-action: none;
+      user-select: none;
+    }
+    .dpad button:hover  { background: #dce1e9; }
+    .dpad button:active { background: var(--accent); color: #fff; }
+    .dpad .dpad-center  { background: var(--warn); color: #fff; border-color: var(--warn); }
+    .dpad .dpad-empty   { visibility: hidden; }
+
+    /* ── SENSOR CARDS ── */
+    .sensor-row {
+      display: flex; gap: 10px; margin-bottom: 10px;
+    }
+    .sensor-card {
+      flex: 1; background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px;
+      text-align: center;
+    }
+    .sensor-card .val {
+      font-size: 1.6rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+    }
+    .sensor-card .unit {
+      font-size: .7rem; color: var(--muted); margin-top: 2px;
+    }
+
+    /* ── BARRA BATERÍA ── */
+    .bat-bar-wrap {
+      background: #e0e0e0; border-radius: 99px;
+      height: 10px; margin: 6px 0;
+      overflow: hidden;
+    }
+    .bat-bar {
+      height: 100%; border-radius: 99px;
+      background: var(--accent2);
+      transition: width .6s;
+      width: 0%;
+    }
+
+    /* ── BRAZO SLIDERS ── */
+    .slider-row {
+      display: flex; align-items: center; gap: 8px; margin: 6px 0;
+    }
+    .slider-row label {
+      width: 70px; margin: 0; flex-shrink: 0;
+      font-size: .78rem; color: var(--muted);
+    }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-val {
+      width: 36px; text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem; color: var(--text);
+    }
+
+    /* ── JOINT STATE DISPLAY ── */
+    .joint-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px; margin: 8px 0;
+    }
+    .joint-box {
+      background: #f8f9fa; border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+    }
+    .joint-box span { color: var(--accent); font-weight: 600; }
+
+    /* ── TAG robot ── */
+    .robot-tag {
+      display: inline-block;
+      background: var(--accent); color: #fff;
+      border-radius: 20px; padding: 2px 10px;
+      font-size: .75rem; font-weight: 600;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  </style>
+</head>
+
+<body>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<div id="header">
+  <h1>🤖 Dashboard</h1>
+  <span class="robot-tag" id="robotTag">robot10</span>
+  <div id="header-status">
+    <div class="dot-ws" id="dotWs"></div>
+    <span id="headerStatus">Desconectado</span>
+  </div>
+</div>
+
+<div id="grid">
+
+<!-- ============================================================
+     PANEL 1: CONEXIÓN WS  (original completo)
+============================================================ -->
+<section class="panel" id="panel-connection">
+  <h3>Conexión WebSocket</h3>
+
+  <label>IP del Broker:</label>
+  <input id="ip" value="192.168.1.12">
+
+  <label>Puerto:</label>
+  <input id="port" value="5052">
+
+  <div style="display:flex;gap:6px;margin-top:6px;">
+    <button class="btn-primary btn-full" id="btnConnect">Conectar</button>
+    <button class="btn-neutral btn-full" id="btnDisconnect" disabled>Desconectar</button>
+  </div>
+  <button class="btn-neutral btn-full" style="margin-top:6px;" onclick="_suscribirRobot(true)">Re-suscribir sensores</button>
+
+  <p id="status" style="margin:8px 0 0;font-size:.85rem;color:var(--muted);">Desconectado</p>
+</section>
+
+<script>
+/* ============================================================
+   CLIENTE WEBSOCKET  (original intacto)
+============================================================ */
+const params  = new URLSearchParams(window.location.search);
+const robotId = params.get("robot") || "10";   // default robot10
+
+let CLIENT_MAC = localStorage.getItem("client_mac");
+if (!CLIENT_MAC) {
+    CLIENT_MAC = crypto.randomUUID();
+    localStorage.setItem("client_mac", CLIENT_MAC);
+}
+
+let ws = null;
+
+const statusBox      = document.getElementById("status");
+const btnConnect     = document.getElementById("btnConnect");
+const btnDisconnect  = document.getElementById("btnDisconnect");
+const dotWs          = document.getElementById("dotWs");
+const headerStatus   = document.getElementById("headerStatus");
+
+btnConnect.onclick = () => {
+  const ip   = document.getElementById("ip").value;
+  const port = document.getElementById("port").value;
+  const url  = `ws://${ip}:${port}/ws`;
+  logBox.textContent += `Intentando conectar a ${url}\n`;
+
+  ws = new WebSocket(url);
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = () => {
+    statusBox.textContent  = "🟢 Conectado";
+    headerStatus.textContent = "Conectado";
+    dotWs.classList.add("on");
+    btnConnect.disabled    = true;
+    btnDisconnect.disabled = false;
+    addLog("debug", "WS conectado");
+    // suscribir tópicos del robot al conectar
+    _suscribirRobot();
+    if (window._resubTimer) clearInterval(window._resubTimer);
+    window._resubTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) _suscribirRobot(false);
+    }, 4000);
+  };
+
+  ws.onclose = () => {
+    if (window._resubTimer) clearInterval(window._resubTimer);
+    window._resubTimer = null;
+    statusBox.textContent  = "🔴 Desconectado";
+    headerStatus.textContent = "Desconectado";
+    dotWs.classList.remove("on");
+    btnConnect.disabled    = false;
+    btnDisconnect.disabled = true;
+    addLog("debug", "WS cerrado");
+  };
+
+  ws.onerror = (e) => {
+    addLog("debug", "WS error: " + (e.message || ""));
+  };
+
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.action === "PUB") {
+        bus.publish(msg.topic, msg.data);
+      }
+    } catch (e) {
+      console.error("JSON inválido:", e);
+    }
+  };
+};
+
+btnDisconnect.onclick = () => { if (ws) ws.close(); };
+</script>
+
+<!-- ============================================================
+     PANEL 1.5: SUSCRIPCIONES  (original intacto)
+============================================================ -->
+<section class="panel" id="panel-subs">
+  <h3>Suscripciones del PubSub</h3>
+  <button class="btn-neutral btn-full" id="btnRefreshSubs">Actualizar</button>
+  <ul id="subsList"></ul>
+</section>
+
+<script>
+/* ============================================================
+   compareTopics + PubSub local  (originales sin cambio)
+============================================================ */
+function compareTopics(pattern, topic) {
+    const p = pattern.split('/');
+    const t = topic.split('/');
+    for (let i = 0; i < p.length; i++) {
+        if (p[i] === '#') return true;
+        if (p[i] === '+') { if (i >= t.length) return false; continue; }
+        if (i >= t.length) return false;
+        if (p[i] !== t[i]) return false;
+    }
+    return p.length === t.length;
+}
+
+class PubSub {
+    constructor() { this.subs = {}; }
+
+    subscribe(pattern, cb) {
+        if (!this.subs[pattern]) this.subs[pattern] = [];
+        this.subs[pattern].push(cb);
+        refreshSubscriptionsPanel();
+    }
+
+    publish(topic, message) {
+        for (const pattern in this.subs) {
+            if (compareTopics(pattern, topic)) {
+                this.subs[pattern].forEach(cb => cb(topic, message));
+            }
+        }
+        if (this.subs["*"]) {
+            this.subs["*"].forEach(cb => cb(topic, message));
+        }
+    }
+}
+
+const bus = new PubSub();
+
+const subsList      = document.getElementById("subsList");
+const btnRefreshSubs= document.getElementById("btnRefreshSubs");
+
+function refreshSubscriptionsPanel() {
+    subsList.innerHTML = "";
+    for (const pattern in bus.subs) {
+        const count = bus.subs[pattern].length;
+        const li = document.createElement("li");
+        li.innerHTML = `<b>${pattern}</b> <span style="color:#888">(${count} cb)</span>`;
+        subsList.appendChild(li);
+    }
+}
+btnRefreshSubs.onclick = refreshSubscriptionsPanel;
+refreshSubscriptionsPanel();
+</script>
+
+<!-- ============================================================
+     PANEL 2: MENSAJES  (original intacto)
+============================================================ -->
+<section class="panel" id="panel-messages">
+  <h3>Mensajes</h3>
+
+  <label>Prefijo base</label>
+  <input id="basePrefix" value="UDFJC/emb1">
+
+  <label>ID del robot</label>
+  <input id="robotId" type="number" value="10" min="0" step="1">
+
+  <label>Prefijo completo (solo lectura)</label>
+  <input id="fullPrefix">
+
+  <hr>
+
+  <label>Tópico (sufijo)</label>
+  <input id="msgTopic" value="arm/cmd">
+
+  <label>Payload JSON</label>
+  <textarea id="msgPayload">{
+  "action": "reposo"
+}</textarea>
+
+  <div style="display:flex;gap:6px;">
+    <button class="btn-primary btn-full" id="btnPub">Publicar</button>
+    <button class="btn-neutral btn-full" id="btnSub">Suscribir</button>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   Prefijo + bus extensions  (original intacto)
+============================================================ */
+const basePrefixInput = document.getElementById("basePrefix");
+const robotIdInput    = document.getElementById("robotId");
+robotIdInput.value    = robotId;
+const fullPrefixInput = document.getElementById("fullPrefix");
+
+function updatePrefixFromParts() {
+    let base = (basePrefixInput.value || "").trim();
+    if (base.endsWith("/")) base = base.slice(0, -1);
+    if (robotId === "") robotId = "10";
+    fullPrefixInput.value = base + "/robot" + robotIdInput.value;
+    bus.prefix = fullPrefixInput.value;
+}
+
+function updatePrefixFromFull() {
+    bus.prefix = fullPrefixInput.value.trim();
+}
+
+updatePrefixFromParts();
+basePrefixInput.onchange = updatePrefixFromParts;
+robotIdInput.onchange    = updatePrefixFromParts;
+fullPrefixInput.onchange = updatePrefixFromFull;
+
+/* extensiones bus.pub / bus.sub / bus.pub_pre / bus.sub_pre (originales) */
+bus.pub = function(topic, message) {
+    bus.publish(topic, message);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action:"PUB", topic, data:message }));
+        addLog(topic, "PUB → WS");
+    } else {
+        addLog(topic, "PUB (local)");
+    }
+};
+
+bus.pub_pre = function(sufijo, message) {
+    let suf = (sufijo || "").trim();
+    if (suf.startsWith("/")) suf = suf.slice(1);
+    bus.pub(bus.prefix + "/" + suf, message);
+};
+
+bus.sub = function(topic, callback) {
+    bus.subscribe(topic, callback);
+    addLog(topic, "SUB local");
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action:"SUB", topic }));
+        addLog(topic, "SUB → WS");
+    }
+};
+
+bus.sub_pre = function(sufijo, callback) {
+    let suf = (sufijo || "").trim();
+    if (suf.startsWith("/")) suf = suf.slice(1);
+    bus.sub(bus.prefix + "/" + suf, callback);
+};
+
+document.getElementById("btnPub").onclick = () => {
+    const sufix = document.getElementById("msgTopic").value;
+    const topic = `${bus.prefix}/${sufix}`;
+    try {
+        const data = JSON.parse(document.getElementById("msgPayload").value);
+        bus.pub(topic, data);
+    } catch(e) { addLog("error", "JSON inválido en payload"); }
+};
+
+document.getElementById("btnSub").onclick = () => {
+    const sufix = document.getElementById("msgTopic").value;
+    const topic = `${bus.prefix}/${sufix}`;
+    bus.sub(topic, (t, msg) => addLog(t, JSON.stringify(msg)));
+};
+
+/* suscribir tópicos del robot cuando se conecta el WS */
+function _suscribirRobot(verbose=true) {
+    const pfx = bus.prefix;
+    const topics = [
+        "sensor/bateria", "sensor/distancia",
+        "arm/joint_state", "car/state",
+        "camera/frame", "debug/watchdog",
+        "vision/estado", "vision/control", "mission/estado", "mission/done", "mission/macro_ack"
+    ];
+    topics.forEach(t => {
+        const full = pfx + "/" + t;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action:"SUB", topic: full }));
+        }
+    });
+    if (verbose) addLog("debug", "Suscripciones del robot enviadas");
+}
+</script>
+
+<!-- ============================================================
+     PANEL 3: LOG  (original intacto)
+============================================================ -->
+<section class="panel" id="panel-log">
+  <h3>Log</h3>
+  <div id="filters"></div>
+  <pre id="log"></pre>
+</section>
+
+<script>
+/* ============================================================
+   LOG + FILTRO  (original intacto)
+============================================================ */
+const logBox      = document.getElementById("log");
+const filtersDiv  = document.getElementById("filters");
+const topicButtons= {};
+let visibleTopics = new Set();
+
+function addTopicButton(topic) {
+    if (topicButtons[topic]) return;
+    visibleTopics.add(topic);
+    const btn = document.createElement("button");
+    btn.className  = "topic-btn active";
+    btn.textContent= topic;
+    btn.onclick = () => {
+        const active = btn.classList.toggle("active");
+        if (active) visibleTopics.add(topic);
+        else visibleTopics.delete(topic);
+    };
+    filtersDiv.appendChild(btn);
+    topicButtons[topic] = btn;
+}
+
+function addLog(topic, txt) {
+    if (!topicButtons[topic]) addTopicButton(topic);
+    if (!visibleTopics.has(topic)) return;
+    logBox.textContent += `[${topic}] ${txt}\n`;
+    logBox.scrollTop    = logBox.scrollHeight;
+}
+
+// Log global con filtro: NO escribir tópicos rápidos en el DOM.
+// El DOM creciendo con vision/estado + sensores + car/state causa lag fuerte en la web.
+const LOG_SILENT_SUFFIXES = [
+    "/vision/estado",
+    "/sensor/distancia",
+    "/sensor/bateria",
+    "/car/state",
+    "/arm/joint_state",
+    "/car/cmd",
+    "/camera/frame"
+];
+let logLineCount = 0;
+const LOG_MAX_LINES = 180;
+
+bus.subscribe("*", (topic, msg) => {
+    if (LOG_SILENT_SUFFIXES.some(s => topic.endsWith(s))) return;
+
+    if (typeof msg === "object") addLog(topic, JSON.stringify(msg));
+    else addLog(topic, msg);
+
+    logLineCount++;
+    if (logLineCount > LOG_MAX_LINES) {
+        const lines = logBox.textContent.split("\n");
+        logBox.textContent = lines.slice(-LOG_MAX_LINES).join("\n");
+        logLineCount = LOG_MAX_LINES;
+    }
+});
+</script>
+
+
+
+<!-- ============================================================
+     PANEL 5A: GEMELO 3D CARRO  (Three.js inline, orbitable con mouse)
+============================================================ -->
+<section class="panel" id="panel-twin-car" style="grid-column:span 1;">
+  <h3>Gemelo 3D — Carro</h3>
+  <canvas id="canvasCar" style="width:100%;height:280px;border-radius:8px;
+          background:#f8fbff;display:block;cursor:grab;touch-action:none;"></canvas>
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              margin-top:6px;font-size:.72rem;color:var(--muted);">
+    <span>🖱 Drag=rotar · Scroll=zoom</span>
+    <span>Modo: <b id="tcModo">DETENIDO</b></span>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:4px;font-size:.72rem;color:var(--muted);">
+    <span>Enc.Izq: <b id="tcEncL">0</b></span>
+    <span>Enc.Der: <b id="tcEncR">0</b></span>
+  </div>
+</section>
+
+<!-- ============================================================
+     PANEL 5B: GEMELO 3D BRAZO  (Three.js inline, orbitable con mouse)
+============================================================ -->
+<section class="panel" id="panel-twin-arm" style="grid-column:span 1;">
+  <h3>Gemelo 3D — Brazo MeArm</h3>
+  <canvas id="canvasArm" style="width:100%;height:280px;border-radius:8px;
+          background:#f8fbff;display:block;cursor:grab;touch-action:none;"></canvas>
+  <div style="font-size:.72rem;color:var(--muted);margin-top:6px;">
+    🖱 Drag=rotar · Scroll=zoom
+  </div>
+  <div class="joint-grid" style="margin-top:6px;">
+    <div class="joint-box" style="font-size:.7rem;">Base <span id="taS1" style="color:var(--accent);">90°</span></div>
+    <div class="joint-box" style="font-size:.7rem;">Brazo <span id="taS2" style="color:var(--orange);">0°</span></div>
+    <div class="joint-box" style="font-size:.7rem;">Antebrazo <span id="taS3" style="color:var(--accent2);">165°</span></div>
+    <div class="joint-box" style="font-size:.7rem;">Muñeca <span id="taS4" style="color:#a78bfa;">90°</span></div>
+  </div>
+  <div style="font-size:.7rem;color:var(--muted);margin-top:4px;text-align:center;">
+    XYZ: <b id="taXYZ">-- -- --</b> cm
+  </div>
+</section>
+
+
+<!-- Three.js CDN + gemelos 3D -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function makeRenderer(canvas){const w=canvas.clientWidth||300,h=canvas.clientHeight||280;const r=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});r.setPixelRatio(window.devicePixelRatio||1);r.setSize(w,h,false);r.setClearColor(0xf8fbff,1);r.shadowMap.enabled=true;return r;}
+function mat(c,m=.15,r=.55){return new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r});}
+function box(w,h,d,ma){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),ma);o.castShadow=true;o.receiveShadow=true;return o;}
+function cyl(r1,r2,h,n,ma){const o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,n),ma);o.castShadow=true;o.receiveShadow=true;return o;}
+function sphere(r,ma){const o=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),ma);o.castShadow=true;o.receiveShadow=true;return o;}
+function lights(scene){scene.add(new THREE.HemisphereLight(0xffffff,0xdbeafe,1.25));const d=new THREE.DirectionalLight(0xffffff,1.25);d.position.set(7,12,9);d.castShadow=true;scene.add(d);}
+function table(scene,size=22){const p=new THREE.Mesh(new THREE.PlaneGeometry(size,size),new THREE.MeshStandardMaterial({color:0xf3f7fb,roughness:.9}));p.rotation.x=-Math.PI/2;p.receiveShadow=true;scene.add(p);const g=new THREE.GridHelper(size,size,0xb9c7d6,0xd8e1ea);g.position.y=.01;scene.add(g);}
+function orbit(canvas,camera,target,radius=13,theta=.65,phi=1.05){let drag=false,ox=0,oy=0;function upd(){camera.position.x=target.x+radius*Math.sin(phi)*Math.sin(theta);camera.position.y=target.y+radius*Math.cos(phi);camera.position.z=target.z+radius*Math.sin(phi)*Math.cos(theta);camera.lookAt(target);}upd();canvas.addEventListener("pointerdown",e=>{drag=true;ox=e.clientX;oy=e.clientY;canvas.style.cursor="grabbing";});window.addEventListener("pointerup",()=>{drag=false;canvas.style.cursor="grab";});window.addEventListener("pointermove",e=>{if(!drag)return;theta+=(e.clientX-ox)*.01;phi=Math.max(.25,Math.min(Math.PI-.25,phi-(e.clientY-oy)*.01));ox=e.clientX;oy=e.clientY;upd();});canvas.addEventListener("wheel",e=>{radius=Math.max(5,Math.min(45,radius+e.deltaY*.035));upd();e.preventDefault();},{passive:false});}
+function resize(canvas,renderer,camera){const w=canvas.clientWidth||300,h=canvas.clientHeight||280;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);}
+
+/* ========================= GEMELO CARRO ========================= */
+(function(){
+  const canvas=document.getElementById("canvasCar");
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0xf8fbff);
+  const renderer=makeRenderer(canvas);
+  const camera=new THREE.PerspectiveCamera(42,(canvas.clientWidth||300)/(canvas.clientHeight||280),.1,200);
+  camera.position.set(7,5.2,11);camera.lookAt(0,.9,0);
+  orbit(canvas,camera,new THREE.Vector3(0,.8,0),13.5,.58,1.08);
+  lights(scene);table(scene,22);
+
+  const mBody=mat(0x101827,.25,.48),mTop=mat(0x1e2b3f,.2,.5),mGreen=mat(0x22c55e,.15,.48),mTire=mat(0x0b1220,.2,.6),mOrange=mat(0xf97316,.15,.46),mPurple=mat(0x7c3aed,.12,.45),mMetal=mat(0xd1d5db,.55,.28),mBlue=mat(0x38bdf8,.1,.4),mSpoke=mat(0x166534,.1,.6);
+  const robot=new THREE.Group();scene.add(robot);
+
+  const base=box(4.4,.45,8.6,mBody);base.position.set(0,.52,0);robot.add(base);
+  const top=box(3.9,.18,7.8,mTop);top.position.set(0,.85,0);robot.add(top);
+
+  function wheel(x){
+    const g=new THREE.Group();
+    const tire=cyl(1,1,.62,48,mTire);tire.rotation.z=Math.PI/2;g.add(tire);
+    const rim=cyl(.78,.78,.66,48,mGreen);rim.rotation.z=Math.PI/2;g.add(rim);
+    for(let i=0;i<6;i++){const s=box(.07,.16,1.12,mSpoke);s.rotation.x=i*Math.PI/3;g.add(s);}
+    g.position.set(x,.82,0);return g;
+  }
+  const wL=wheel(-2.55),wR=wheel(2.55);robot.add(wL,wR);
+
+  const casterF=sphere(.32,mMetal);casterF.position.set(0,.22,3.65);robot.add(casterF);
+  const casterB=sphere(.32,mMetal);casterB.position.set(0,.22,-3.65);robot.add(casterB);
+  const armDisk=cyl(.95,.95,.16,48,mat(0x0b1220,.25,.45));armDisk.position.set(0,1.03,.1);robot.add(armDisk);
+  const armBlock=box(.95,.45,.95,mOrange);armBlock.position.set(0,1.35,.1);robot.add(armBlock);
+  const tof=box(.78,.26,.24,mPurple);tof.position.set(0,1.12,4.45);robot.add(tof);
+  const cam=box(.9,.34,.45,mPurple);cam.position.set(-1.7,1.14,3.7);robot.add(cam);
+  const arrow=new THREE.Mesh(new THREE.ConeGeometry(.42,1.25,3),mBlue);
+  arrow.rotation.x=Math.PI/2;arrow.rotation.z=Math.PI/6;arrow.position.set(0,2,4.75);robot.add(arrow);
+
+  // ODOMETRÍA REAL DEL GEMELO
+  // Se elimina la amortiguación K_GIRO_VISUAL=0.45.
+  // El giro se calcula como robot diferencial:
+  //   dTheta = (dR - dL) / distancia_entre_ruedas
+  // La Pico ahora también publica dirección y velocidad de cada rueda para no adivinar.
+  let DIST_EJES_M = 0.135;
+  let METROS_POR_TICK = 0.00008968;
+  let METROS_TICK_IZQ = 0.00008850;
+  let METROS_TICK_DER = 0.00009090;
+  const ESCALA_ESCENA = 20.0;
+  const MAX_TICKS_POR_PAQUETE = 1200;
+  const MAX_DS_M = 0.08;
+  const MAX_DTHETA = 0.70;
+  // Calibración angular: si el real gira 90° y el gemelo 45°, usar 2.0.
+  // Luego se puede ajustar fino: factor = angulo_real / angulo_gemelo.
+  const CAL_GIRO_GEMELO = 1.33;
+
+  let lastL=null,lastR=null,lastMsgMs=null;
+  let x=0,z=0,yaw=0;
+  let targetX=0,targetZ=0,targetYaw=0;
+  const TWIN_POS_ALPHA = 0.26;
+  const TWIN_YAW_ALPHA = 0.32;
+  let wheelVelL=0,wheelVelR=0;
+
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+  function resetTwinPose(){
+    x=0; z=0; yaw=0; targetX=0; targetZ=0; targetYaw=0; lastL=null; lastR=null; lastMsgMs=null;
+    robot.position.set(0,0,0);
+    robot.rotation.y=0;
+    wheelVelL=0; wheelVelR=0;
+  }
+  window.resetCarTwinPose = resetTwinPose;
+
+  function signedDistancesFromState(msg, dTicksL, dTicksR, dt_s){
+    const modo=(msg.modo||msg.action||"detenido").toLowerCase();
+    const dir=(msg.direccion||"").toLowerCase();
+    const ruedas=msg.ruedas||{};
+
+    // 1) Signo preferido: lo publica la Pico según cómo activó el puente H.
+    let sL = Number(ruedas.signo_izq || 0);
+    let sR = Number(ruedas.signo_der || 0);
+
+    // 2) Respaldo por modo/dirección.
+    if(!sL || !sR){
+      if(modo==="adelante" || (modo==="recta" && dir!=="atras")) { sL=1; sR=1; }
+      else if(modo==="atras" || (modo==="recta" && dir==="atras")) { sL=-1; sR=-1; }
+      else if(modo==="izquierda" || (modo==="girar" && dir==="izquierda")) { sL=-1; sR=1; }
+      else if(modo==="derecha" || (modo==="girar" && dir==="derecha")) { sL=1; sR=-1; }
+      else { sL=Math.sign(dTicksL)||1; sR=Math.sign(dTicksR)||1; }
+    }
+
+    let dL = Math.abs(dTicksL) * METROS_TICK_IZQ * sL;
+    let dR = Math.abs(dTicksR) * METROS_TICK_DER * sR;
+
+    // 3) Si los encoders llegan sin delta por pérdida de paquetes, usa velocidad publicada.
+    // Esto evita que el gemelo se congele durante giros programados.
+    if(Math.abs(dTicksL) < 1 && Math.abs(dTicksR) < 1 && modo !== "detenido" && dt_s > 0){
+      const vl = Number(ruedas.vl_m_s || 0);
+      const vr = Number(ruedas.vr_m_s || 0);
+      if(vl || vr){
+        dL = vl * dt_s;
+        dR = vr * dt_s;
+      }
+    }
+
+    return [dL,dR];
+  }
+
+  bus.subscribe("*",(topic,msg)=>{
+    if(!bus.prefix||topic!==bus.prefix+"/car/state")return;
+
+    const modo=(msg.modo||msg.action||"detenido").toLowerCase();
+    const modoEl=document.getElementById("tcModo");
+    if(modoEl) modoEl.textContent=(modo + (msg.direccion ? " " + msg.direccion : "")).toUpperCase();
+
+    if(msg.odom){
+      if(msg.odom.distancia_ejes_m) DIST_EJES_M = Number(msg.odom.distancia_ejes_m) || DIST_EJES_M;
+      if(msg.odom.metros_por_tick)  METROS_POR_TICK = Number(msg.odom.metros_por_tick) || METROS_POR_TICK;
+      if(msg.odom.metros_por_tick_izq) METROS_TICK_IZQ = Number(msg.odom.metros_por_tick_izq) || METROS_TICK_IZQ;
+      if(msg.odom.metros_por_tick_der) METROS_TICK_DER = Number(msg.odom.metros_por_tick_der) || METROS_TICK_DER;
+    }
+
+    const nowMs = Number(msg.t_ms || performance.now());
+    let dt_s = 0.05;
+    if(lastMsgMs !== null){
+      dt_s = clamp((nowMs - lastMsgMs)/1000, 0.01, 0.25);
+    }
+    lastMsgMs = nowMs;
+
+    if(!msg.encoders){
+      if(modo==="detenido") { wheelVelL=0; wheelVelR=0; }
+      return;
+    }
+
+    const encL=Number(msg.encoders[0]??0);
+    const encR=Number(msg.encoders[1]??0);
+    document.getElementById("tcEncL").textContent=encL;
+    document.getElementById("tcEncR").textContent=encR;
+
+    if(lastL===null || lastR===null){ lastL=encL; lastR=encR; return; }
+
+    let dTicksL=encL-lastL;
+    let dTicksR=encR-lastR;
+    lastL=encL; lastR=encR;
+
+    if(Math.abs(dTicksL)>MAX_TICKS_POR_PAQUETE || Math.abs(dTicksR)>MAX_TICKS_POR_PAQUETE){
+      addLog("debug", `Odómetro virtual ignoró salto encoders L=${dTicksL}, R=${dTicksR}`);
+      return;
+    }
+
+    if(modo==="detenido" && Math.abs(dTicksL)<2 && Math.abs(dTicksR)<2){
+      wheelVelL=0; wheelVelR=0;
+      return;
+    }
+
+    const signed = signedDistancesFromState(msg, dTicksL, dTicksR, dt_s);
+    const dL = signed[0];
+    const dR = signed[1];
+
+    const dS = clamp((dL+dR)/2, -MAX_DS_M, MAX_DS_M);
+    const dTheta = clamp(((dR-dL)/DIST_EJES_M) * CAL_GIRO_GEMELO, -MAX_DTHETA, MAX_DTHETA);
+
+    targetYaw += dTheta;
+    targetX += dS * Math.sin(targetYaw);
+    targetZ += dS * Math.cos(targetYaw);
+
+    wheelVelL = clamp((dL / Math.max(METROS_TICK_IZQ, 1e-6))*0.012, -1.8, 1.8);
+    wheelVelR = clamp((dR / Math.max(METROS_TICK_DER, 1e-6))*0.012, -1.8, 1.8);
+  });
+
+  const panel=document.getElementById("panel-twin-car");
+  const btn=document.createElement("button");
+  btn.textContent="Reset pose virtual";
+  btn.className="btn-neutral btn-full";
+  btn.style.marginTop="8px";
+  btn.onclick=resetTwinPose;
+  panel.appendChild(btn);
+
+  function anim(){
+    requestAnimationFrame(anim);
+
+    // Interpolación visual: la Pico publica menos, el HTML suaviza el gemelo.
+    x += (targetX - x) * TWIN_POS_ALPHA;
+    z += (targetZ - z) * TWIN_POS_ALPHA;
+    let dyaw = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
+    yaw += dyaw * TWIN_YAW_ALPHA;
+    robot.position.x = x * ESCALA_ESCENA;
+    robot.position.z = z * ESCALA_ESCENA;
+    robot.rotation.y = yaw;
+
+    wL.rotation.x+=wheelVelL*.08;
+    wR.rotation.x+=wheelVelR*.08;
+    wheelVelL*=0.90; wheelVelR*=0.90;
+    if(Math.abs(wheelVelL)<0.01) wheelVelL=0;
+    if(Math.abs(wheelVelR)<0.01) wheelVelR=0;
+    renderer.render(scene,camera);
+  }
+  anim();
+  window.addEventListener("resize",()=>resize(canvas,renderer,camera));
+})();
+
+
+/* ========================= GEMELO BRAZO ========================= */
+(function(){
+  const canvas=document.getElementById("canvasArm");
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0xf8fbff);
+  const renderer=makeRenderer(canvas);
+  const camera=new THREE.PerspectiveCamera(42,(canvas.clientWidth||300)/(canvas.clientHeight||280),.1,200);
+  camera.position.set(7.5,5.8,10.5);camera.lookAt(0,2.4,0);
+  orbit(canvas,camera,new THREE.Vector3(0,2.2,0),12,.65,1.05);
+  lights(scene);table(scene,20);
+
+  const mBase=mat(0x0b1220,.25,.42),mOrange=mat(0xf97316,.12,.45),mJoint=mat(0x111827,.2,.48),mWrist=mat(0x38bdf8,.12,.45),mFork=mat(0x0f172a,.2,.55);
+  const baseYaw=new THREE.Group();scene.add(baseYaw);
+  const disk=cyl(1.25,1.25,.18,64,mBase);disk.position.set(0,.1,0);baseYaw.add(disk);
+  const mast=cyl(.14,.14,.75,24,mBase);mast.position.set(0,.55,0);baseYaw.add(mast);
+  const armGroup=new THREE.Group();baseYaw.add(armGroup);
+  let objs=[];
+
+  function clear(){objs.forEach(o=>armGroup.remove(o));objs=[];}
+  function link(a,b,r,ma){const dir=new THREE.Vector3().subVectors(b,a),len=dir.length();const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,18),ma);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());mesh.castShadow=true;mesh.receiveShadow=true;armGroup.add(mesh);objs.push(mesh);}
+  function joint(p,r,ma){const s=sphere(r,ma);s.position.copy(p);armGroup.add(s);objs.push(s);}
+
+  function updateArm(s1=90,s2=0,s3=165,s4=90,xyz=null){
+    clear();
+    const D=Math.PI/180;
+
+    // Misma referencia que brazo.py:
+    // t1=s1-90, t2=180-s2, t3=t2-s3, t4=t3+(s4-90).
+    baseYaw.rotation.y=(s1-90)*D;
+
+    const scale=.33,L1=3.5*scale,L2=9*scale,L3=8*scale,L4=3.5*scale;
+    const t2=(180-s2)*D;
+    const t3=(180-s2-s3)*D;
+    const t4=(180-s2-s3+(s4-90))*D;
+
+    const p0=new THREE.Vector3(0,.35+L1,0);
+    const p1=new THREE.Vector3(0,p0.y+Math.sin(t2)*L2,Math.cos(t2)*L2);
+    const p2=new THREE.Vector3(0,p1.y+Math.sin(t3)*L3,p1.z+Math.cos(t3)*L3);
+    const p3=new THREE.Vector3(0,p2.y+Math.sin(t4)*L4,p2.z+Math.cos(t4)*L4);
+
+    link(new THREE.Vector3(0,.25,0),p0,.09,mBase);
+    link(p0,p1,.13,mOrange);
+    link(p1,p2,.11,mOrange);
+    link(p2,p3,.09,mFork);
+
+    joint(p0,.23,mJoint);joint(p1,.23,mJoint);joint(p2,.20,mWrist);joint(p3,.16,mJoint);
+
+    const down=p3.clone().add(new THREE.Vector3(0,-.35,0));
+    const out=down.clone().add(new THREE.Vector3(0,0,.65));
+    link(p3,down,.045,mFork);link(down,out,.045,mFork);
+
+    document.getElementById("taS1").textContent=Number(s1).toFixed(1)+"°";
+    document.getElementById("taS2").textContent=Number(s2).toFixed(1)+"°";
+    document.getElementById("taS3").textContent=Number(s3).toFixed(1)+"°";
+    document.getElementById("taS4").textContent=Number(s4).toFixed(1)+"°";
+    if(xyz)document.getElementById("taXYZ").textContent=`${Number(xyz.x??0).toFixed(1)} ${Number(xyz.y??0).toFixed(1)} ${Number(xyz.z??0).toFixed(1)}`;
+  }
+
+  updateArm(90,0,165,90);
+  bus.subscribe("*",(topic,msg)=>{
+    if(!bus.prefix||topic!==bus.prefix+"/arm/joint_state")return;
+    updateArm(msg.base??90,msg.brazo??0,msg.antebrazo??165,msg.muneca??90,msg);
+  });
+  function anim(){requestAnimationFrame(anim);renderer.render(scene,camera);}anim();
+  window.addEventListener("resize",()=>resize(canvas,renderer,camera));
+})();
+</script>
+
+<!-- ============================================================
+     PANEL 6: SENSORES  (NUEVO)
+     Muestra batería y distancia publicados por la Pico
+============================================================ -->
+<section class="panel" id="panel-sensors">
+  <h3>Sensores — robot10</h3>
+
+  <div class="sensor-row">
+    <div class="sensor-card">
+      <div class="val" id="batVal">--</div>
+      <div class="unit">% batería</div>
+      <div class="bat-bar-wrap"><div class="bat-bar" id="batBar"></div></div>
+    </div>
+    <div class="sensor-card">
+      <div class="val" id="distVal">--</div>
+      <div class="unit">mm distancia</div>
+    </div>
+  </div>
+
+  <hr>
+  <h3 style="margin-top:4px;">OLED</h3>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <button class="btn-neutral" onclick="oledShow('completo')">Completo</button>
+    <button class="btn-neutral" onclick="oledShow('bateria')">Batería</button>
+    <button class="btn-neutral" onclick="oledShow('distancia')">Distancia</button>
+  </div>
+</section>
+
+<script>
+/* ── Sensores ─────────────────────────────────────────────── */
+bus.subscribe("*", (topic, msg) => {
+    if (!bus.prefix) return;
+    const pfx = bus.prefix + "/";
+
+    if (topic === pfx + "sensor/bateria") {
+        const p = msg.porcentaje ?? "--";
+        document.getElementById("batVal").textContent = p;
+        document.getElementById("batBar").style.width =
+            (typeof p === "number" ? p : 0) + "%";
+        const bar = document.getElementById("batBar");
+        bar.style.background = p < 20 ? "var(--warn)" : p < 50 ? "var(--orange)" : "var(--accent2)";
+    }
+
+    if (topic === pfx + "sensor/distancia") {
+        document.getElementById("distVal").textContent =
+            msg.mm !== null && msg.mm !== undefined ? msg.mm : "--";
+    }
+});
+
+function oledShow(mode) {
+    bus.pub_pre("oled/show", { mode });
+}
+</script>
+
+<!-- ============================================================
+     PANEL 7: CONTROL CARRO  (NUEVO)
+     D-pad + comandos avanzados (recta, giro, círculo)
+============================================================ -->
+<section class="panel" id="panel-carro">
+  <h3>Control Carro</h3>
+
+  <!-- D-PAD -->
+  <div class="dpad">
+    <div class="dpad-empty"></div>
+    <button title="Adelante"   onpointerdown="carHold(event,'adelante')">▲</button>
+    <div class="dpad-empty"></div>
+
+    <button title="Izquierda"  onpointerdown="carHold(event,'izquierda')">◀</button>
+    <button class="dpad-center" title="Stop" onclick="carCmd('detener')">■</button>
+    <button title="Derecha"    onpointerdown="carHold(event,'derecha')">▶</button>
+
+    <div class="dpad-empty"></div>
+    <button title="Atrás"      onpointerdown="carHold(event,'atras')">▼</button>
+    <div class="dpad-empty"></div>
+  </div>
+
+  <p style="text-align:center;font-size:.75rem;color:var(--muted);margin:2px 0 10px;">
+    Mantén presionado: envía keepalive cada 120 ms · al soltar se detiene
+  </p>
+
+  <hr>
+
+  <!-- Comandos avanzados -->
+  <details>
+    <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);">
+      Comandos avanzados
+    </summary>
+    <div style="margin-top:8px;">
+
+      <label>Recta — velocidad (m/s)</label>
+      <input type="number" id="cVel" value="0.25" min="0.05" max="0.5" step="0.05">
+      <label>Recta — tiempo (s)</label>
+      <input type="number" id="cTiempo" value="2" min="0.5" max="10" step="0.5">
+      <button class="btn-primary btn-full" onclick="carRecta()">Recta</button>
+
+      <hr>
+
+      <label>Giro — dirección</label>
+      <select id="cDirGiro">
+        <option value="derecha">Derecha</option>
+        <option value="izquierda">Izquierda</option>
+      </select>
+      <label>Giro — velocidad (m/s)</label>
+      <input type="number" id="cVelGiro" value="0.10" min="0.05" max="0.3" step="0.05">
+      <label>Giro — tiempo (s)</label>
+      <input type="number" id="cTiempoGiro" value="1" min="0.5" max="5" step="0.5">
+      <button class="btn-orange btn-full" onclick="carGirar()">Girar</button>
+
+      <hr>
+
+      <label>Círculo — radio (m)</label>
+      <input type="number" id="cRadio" value="0.20" min="0.05" max="1" step="0.05">
+      <label>Círculo — dirección</label>
+      <select id="cDirCirculo">
+        <option value="derecha">Derecha</option>
+        <option value="izquierda">Izquierda</option>
+      </select>
+      <label>Círculo — tiempo (s)</label>
+      <input type="number" id="cTiempoCirculo" value="3" min="1" max="15" step="0.5">
+      <button class="btn-success btn-full" onclick="carCirculo()">Círculo</button>
+    </div>
+  </details>
+
+  <hr>
+  <div style="font-size:.78rem;color:var(--muted);">
+    Estado carro: <b id="carEstado">--</b>
+  </div>
+</section>
+
+<script>
+/* ── Control carro ────────────────────────────────────────── */
+function carCmd(action) {
+    bus.pub_pre("car/cmd", { action });
+}
+
+let carHoldTimer = null;
+let carHoldAction = null;
+
+function carHold(ev, action) {
+    if (ev) {
+        ev.preventDefault();
+        try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch(e) {}
+    }
+    carStopHold(false);
+    carHoldAction = action;
+    carCmd(action);
+    carHoldTimer = setInterval(() => {
+        if (carHoldAction) carCmd(carHoldAction);
+    }, 120);
+}
+
+function carStopHold(sendStop=true) {
+    if (carHoldTimer) clearInterval(carHoldTimer);
+    carHoldTimer = null;
+    carHoldAction = null;
+    if (sendStop) carCmd("detener");
+}
+
+window.addEventListener("pointerup",   () => carStopHold(true));
+window.addEventListener("pointercancel",() => carStopHold(true));
+window.addEventListener("blur",        () => carStopHold(true));
+
+function carRecta() {
+    bus.pub_pre("car/cmd", {
+        action:    "recta",
+        velocidad: parseFloat(document.getElementById("cVel").value),
+        tiempo:    parseFloat(document.getElementById("cTiempo").value)
+    });
+}
+
+function carGirar() {
+    bus.pub_pre("car/cmd", {
+        action:    "girar",
+        direccion: document.getElementById("cDirGiro").value,
+        velocidad: parseFloat(document.getElementById("cVelGiro").value),
+        tiempo:    parseFloat(document.getElementById("cTiempoGiro").value)
+    });
+}
+
+function carCirculo() {
+    bus.pub_pre("car/cmd", {
+        action:    "circulo",
+        radio:     parseFloat(document.getElementById("cRadio").value),
+        direccion: document.getElementById("cDirCirculo").value,
+        tiempo:    parseFloat(document.getElementById("cTiempoCirculo").value)
+    });
+}
+
+/* estado del carro */
+bus.subscribe("*", (topic, msg) => {
+    if (bus.prefix && topic === bus.prefix + "/car/state") {
+        document.getElementById("carEstado").textContent = msg.modo || "--";
+    }
+});
+</script>
+
+<!-- ============================================================
+     PANEL 8: CONTROL BRAZO  (NUEVO)
+     Sliders de ángulos + XYZ + posición recibida
+============================================================ -->
+<section class="panel" id="panel-brazo">
+  <h3>Control Brazo MeArm</h3>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:10px;">
+    <button class="btn-primary" id="tabAngBtn"  onclick="showTab('ang')">Ángulos</button>
+    <button class="btn-neutral" id="tabXyzBtn"  onclick="showTab('xyz')">XYZ</button>
+    <button class="btn-danger"  onclick="armCmd({action:'reposo'})">Reposo</button>
+  </div>
+
+  <!-- TAB ÁNGULOS -->
+  <div id="tabAng">
+    <div class="slider-row">
+      <label>Base</label>
+      <input type="range" id="sBase"      min="0"   max="180" value="90"
+             oninput="sv('vBase',this.value,'°')">
+      <span class="slider-val" id="vBase">90°</span>
+    </div>
+    <div class="slider-row">
+      <label>Brazo</label>
+      <input type="range" id="sBrazo"     min="0"   max="180" value="0"
+             oninput="sv('vBrazo',this.value,'°')">
+      <span class="slider-val" id="vBrazo">0°</span>
+    </div>
+    <div class="slider-row">
+      <label>Antebrazo</label>
+      <input type="range" id="sAntebrazo" min="0"   max="165" value="165"
+             oninput="sv('vAntebrazo',this.value,'°')">
+      <span class="slider-val" id="vAntebrazo">165°</span>
+    </div>
+    <div class="slider-row">
+      <label>Muñeca</label>
+      <input type="range" id="sMuneca"    min="40"  max="140" value="90"
+             oninput="sv('vMuneca',this.value,'°')">
+      <span class="slider-val" id="vMuneca">90°</span>
+    </div>
+    <button class="btn-primary btn-full" style="margin-top:6px;"
+            onclick="enviarAngulos()">Enviar ángulos</button>
+  </div>
+
+  <!-- TAB XYZ — independiente de la misión montacargas -->
+  <div id="tabXyz" style="display:none;">
+    <p style="font-size:.72rem;color:var(--muted);margin:0 0 8px;">
+      Modo brazo libre. No usar durante misión ni con el antebrazo forzado.
+    </p>
+    <div class="slider-row">
+      <label>X (cm)</label>
+      <input type="range" id="sX" min="1" max="24" step="0.5" value="4.0"
+             oninput="sv('vX',this.value,' cm')">
+      <span class="slider-val" id="vX">4.0 cm</span>
+    </div>
+    <div class="slider-row">
+      <label>Y (cm)</label>
+      <input type="range" id="sY" min="-10" max="10" step="0.5" value="0"
+             oninput="sv('vY',this.value,' cm')">
+      <span class="slider-val" id="vY">0 cm</span>
+    </div>
+    <div class="slider-row">
+      <label>Z (cm)</label>
+      <input type="range" id="sZ" min="0" max="24" step="0.5" value="17.0"
+             oninput="sv('vZ',this.value,' cm')">
+      <span class="slider-val" id="vZ">17.0 cm</span>
+    </div>
+    <div class="slider-row">
+      <label>φ (°)</label>
+      <input type="range" id="sPhi" min="-60" max="60" step="5" value="0"
+             oninput="sv('vPhi',this.value,'°')">
+      <span class="slider-val" id="vPhi">0°</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="btn-primary btn-full" onclick="enviarXYZ()">Mover a XYZ</button>
+      <button class="btn-neutral btn-full" onclick="armCmd({action:'estado'})">Actualizar estado</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Joint state recibido -->
+  <div style="font-size:.78rem;color:var(--muted);margin-bottom:4px;">Estado recibido del robot:</div>
+  <div class="joint-grid">
+    <div class="joint-box">Base <span id="jBase">--</span>°</div>
+    <div class="joint-box">Brazo <span id="jBrazo">--</span>°</div>
+    <div class="joint-box">Antebrazo <span id="jAnte">--</span>°</div>
+    <div class="joint-box">Muñeca <span id="jMun">--</span>°</div>
+    <div class="joint-box">X <span id="jX">--</span> cm</div>
+    <div class="joint-box">Y <span id="jY">--</span> cm</div>
+    <div class="joint-box" style="grid-column:span 2;">Z <span id="jZ">--</span> cm</div>
+  </div>
+</section>
+
+<script>
+/* ── Control brazo ────────────────────────────────────────── */
+function showTab(tab) {
+    document.getElementById("tabAng").style.display = tab === "ang" ? "" : "none";
+    document.getElementById("tabXyz").style.display = tab === "xyz" ? "" : "none";
+    document.getElementById("tabAngBtn").className  = tab === "ang" ? "btn-primary" : "btn-neutral";
+    document.getElementById("tabXyzBtn").className  = tab === "xyz" ? "btn-primary" : "btn-neutral";
+}
+
+function sv(id, val, unit) {
+    document.getElementById(id).textContent = parseFloat(val).toFixed(1) + unit;
+}
+
+function armCmd(data) {
+    bus.pub_pre("arm/cmd", data);
+}
+
+function enviarAngulos() {
+    armCmd({
+        action:     "angles",
+        base:       parseFloat(document.getElementById("sBase").value),
+        brazo:      parseFloat(document.getElementById("sBrazo").value),
+        antebrazo:  parseFloat(document.getElementById("sAntebrazo").value),
+        muneca:     parseFloat(document.getElementById("sMuneca").value)
+    });
+}
+
+function enviarXYZ() {
+    armCmd({
+        action: "xyz",
+        x:   parseFloat(document.getElementById("sX").value),
+        y:   parseFloat(document.getElementById("sY").value),
+        z:   parseFloat(document.getElementById("sZ").value),
+        phi: parseFloat(document.getElementById("sPhi").value),
+        duracion: 4.5,
+        pasos: 150
+    });
+}
+
+/* joint_state recibido
+   IMPORTANTE:
+   El estado del robot solo actualiza los cuadros de lectura.
+   NO actualiza los sliders XYZ, porque eso los hacía “resortarse”
+   cuando llegaban estados antiguos del brazo. */
+bus.subscribe("*", (topic, msg) => {
+    if (!bus.prefix) return;
+    if (topic !== bus.prefix + "/arm/joint_state") return;
+
+    document.getElementById("jBase").textContent  = msg.base      ?? "--";
+    document.getElementById("jBrazo").textContent = msg.brazo     ?? "--";
+    document.getElementById("jAnte").textContent  = msg.antebrazo ?? "--";
+    document.getElementById("jMun").textContent   = msg.muneca    ?? "--";
+    document.getElementById("jX").textContent     = msg.x         ?? "--";
+    document.getElementById("jY").textContent     = msg.y         ?? "--";
+    document.getElementById("jZ").textContent     = msg.z         ?? "--";
+});
+
+/* teclado numérico (igual que IR físico, para pruebas)
+   No captura teclas cuando se escribe en inputs/textareas/selects. */
+document.addEventListener("keydown", (e) => {
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    const map = {
+        ArrowUp:    () => carCmd("adelante"),
+        ArrowDown:  () => carCmd("atras"),
+        ArrowLeft:  () => carCmd("izquierda"),
+        ArrowRight: () => carCmd("derecha"),
+        " ":        () => carCmd("detener"),
+        "r":        () => armCmd({action:"reposo"}),
+    };
+    if (map[e.key]) { e.preventDefault(); map[e.key](); }
+});
+document.addEventListener("keyup", (e) => {
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+        carCmd("detener");
+    }
+});
+</script>
+
+
+
+
+<!-- ============================================================
+     PANEL 9: MISIÓN MONTACARGAS
+============================================================ -->
+<section class="panel" id="panel-mission">
+  <h3>Misión Montacargas — PC Macro</h3>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <button class="btn-success btn-full" onclick="missionCmd('iniciar')">Iniciar misión PC</button>
+    <button class="btn-neutral btn-full" onclick="missionCmd('pausar')">Pausar</button>
+    <button class="btn-primary btn-full" onclick="missionCmd('reanudar')">Reanudar</button>
+    <button class="btn-danger btn-full" onclick="missionCmd('abortar')">Abortar</button>
+  </div>
+
+  <hr>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <button class="btn-orange btn-full" onclick="missionCmd('recoger')">Forzar recoger</button>
+    <button class="btn-success btn-full" onclick="missionCmd('alzar')">Forzar alzar</button>
+  </div>
+
+  <hr>
+
+  <div class="joint-grid">
+    <div class="joint-box">Estado <span id="mEstado">--</span></div>
+    <div class="joint-box">Modo <span id="mModo">--</span></div>
+    <div class="joint-box" style="grid-column:span 2;">Info <span id="mInfo">--</span></div>
+    <div class="joint-box" style="grid-column:span 2;">Resultado <span id="mDone">--</span></div>
+    <div class="joint-box" style="grid-column:span 2;">Macro <span id="mMacro">--</span></div>
+  </div>
+</section>
+
+<script>
+function missionCmd(action) {
+    bus.pub_pre("mission/pc_cmd", { action });
+
+    // Botón de seguridad: detener también directo al micro.
+    // Así Abort/Pausa no dependen de que el cerebro PC esté esperando ACK.
+    if (action === "abortar" || action === "pausar" || action === "stop") {
+        const sid = Date.now();
+        bus.pub_pre("mission/macro", { cmd:"stop", id:"ui-stop-" + sid });
+        bus.pub_pre("car/cmd", { action:"detener" });
+        setTimeout(() => bus.pub_pre("car/cmd", { action:"detener", repeat:true }), 120);
+        setTimeout(() => bus.pub_pre("mission/macro", { cmd:"stop", id:"ui-stop2-" + sid }), 250);
+    }
+}
+
+
+
+bus.subscribe("*", (topic, msg) => {
+    if (!bus.prefix) return;
+
+    if (topic === bus.prefix + "/mission/estado") {
+        document.getElementById("mEstado").textContent = msg.nombre || msg.estado || "--";
+        document.getElementById("mModo").textContent = msg.modo || "--";
+        document.getElementById("mInfo").textContent = msg.info || "--";
+    }
+
+    if (topic === bus.prefix + "/mission/done") {
+        document.getElementById("mDone").textContent = msg.exito ? "Éxito" : "Falló";
+    }
+
+    if (topic === bus.prefix + "/mission/macro_ack") {
+        const el = document.getElementById("mMacro");
+        if (el) el.textContent = (msg.ok ? "OK " : "ERR ") + (msg.cmd || "--") + " " + (msg.msg || "");
+    }
+});
+</script>
+
+
+<section class="panel" id="panel-camera" style="text-align:center;max-width:460px;margin:0 auto;">
+  <h3>Visión Artificial — ESP32-CAM + ArUco</h3>
+
+  <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <button class="btn-success btn-full" onclick="visionControl(true)">Auto visión ON</button>
+    <button class="btn-danger btn-full" onclick="visionControl(false)">Auto visión OFF</button>
+  </div>
+  <p style="font-size:.72rem;color:var(--muted);margin:0 0 8px;">
+    OFF deja la cámara y telemetría activas, pero evita que Python mueva el carro solo.
+  </p>
+
+  <div style="background:#f8fbff;border-radius:8px;overflow:hidden;display:inline-block;line-height:0;border:2px solid var(--border);width:100%;">
+    <img id="snapshotView" style="width:100%;height:auto;display:block;" alt="Esperando video de Python...">
+  </div>
+
+  <div class="joint-grid" style="margin-top:8px;text-align:left;">
+    <div class="joint-box">Detectado <span id="vDetectado">--</span></div>
+    <div class="joint-box">Alineado <span id="vAlineado">--</span></div>
+    <div class="joint-box">Offset X <span id="vOffset">--</span> px</div>
+    <div class="joint-box">Distancia <span id="vDist">--</span> cm</div>
+    <div class="joint-box">ID <span id="vId">--</span></div>
+    <div class="joint-box">FPS <span id="vFps">--</span></div>
+    <div class="joint-box" style="grid-column:span 2;">Diccionario <span id="vDict">--</span></div>
+    <div class="joint-box" style="grid-column:span 2;">Auto visión <span id="vAuto">OFF</span></div>
+  </div>
+</section>
+
+<script>
+(function() {
+    const imgElement = document.getElementById("snapshotView");
+
+    function frameUrl() {
+        const ip = document.getElementById("ip").value || "192.168.1.12";
+        return `http://${ip}:8089/frame.jpg?t=${performance.now()}`;
+    }
+
+    function requestNextFrame() {
+        imgElement.src = frameUrl();
+    }
+
+    imgElement.onload = () => { setTimeout(requestNextFrame, 90); };
+    imgElement.onerror = () => { setTimeout(requestNextFrame, 700); };
+
+    bus.sub_pre("vision/estado", (topic, data) => {
+        document.getElementById("vDetectado").textContent = data.detectado ? "SI" : "NO";
+        document.getElementById("vAlineado").textContent = data.alineado ? "SI" : "NO";
+        document.getElementById("vOffset").textContent = (data.error_x !== undefined) ? (data.offset_x + " / err " + data.error_x) : (data.offset_x ?? "--");
+        document.getElementById("vDist").textContent = data.distancia_cm ?? "--";
+        if (document.getElementById("vId"))   document.getElementById("vId").textContent   = data.id ?? data.marker_id ?? "--";
+        if (document.getElementById("vFps"))  document.getElementById("vFps").textContent  = data.fps ?? "--";
+        if (document.getElementById("vDict")) document.getElementById("vDict").textContent = data.diccionario ?? data.dict ?? "--";
+        document.getElementById("vAuto").textContent = data.activo ? "ON" : "OFF";
+    });
+
+    requestNextFrame();
+})();
+
+function visionControl(activo) {
+    bus.pub_pre("vision/control", { activo });
+    document.getElementById("vAuto").textContent = activo ? "ON" : "OFF";
+}
+</script>
+
+</div><!-- #grid -->
+</body>
+</html>
